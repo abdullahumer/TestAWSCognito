@@ -54,9 +54,14 @@ public class MainActivity extends AppCompatActivity {
 
         final String identityId = "eu-west-1:2923b1ad-4cba-4e1f-a2cf-db245f3d75bb";
 
+        String identityPoolId = "eu-west-1:289fd4a0-2236-4ff4-9c2b-61c93e60bf0a";
+
 
         Map<String,String> logins = new HashMap<>();
         logins.put("cognito-identity.amazonaws.com", token);
+
+        CognitoCachingCredentialsProvider cachingCredentialsProvider = new CognitoCachingCredentialsProvider(getApplicationContext(), identityPoolId, Regions.EU_WEST_1);
+        cachingCredentialsProvider.setLogins(logins);
 
         GetCredentialsForIdentityRequest getCredentialsRequest =
                 new GetCredentialsForIdentityRequest()
@@ -67,16 +72,20 @@ public class MainActivity extends AppCompatActivity {
                 getApplicationContext(),"eu-west-1:289fd4a0-2236-4ff4-9c2b-61c93e60bf0a", Regions.EU_WEST_1);
         credentialsProvider.setLogins(logins);
 
-        AmazonCognitoIdentityClient cognitoIdentityClient = new AmazonCognitoIdentityClient(credentialsProvider);
+        AmazonCognitoIdentityClient cognitoIdentityClient = new AmazonCognitoIdentityClient(cachingCredentialsProvider);
 //        AmazonCognitoIdentityClient cognitoIdentityClient = new AmazonCognitoIdentityClient(awsCredentials);
         try {
             GetCredentialsForIdentityResult getCredentialsResult = cognitoIdentityClient.getCredentialsForIdentity(getCredentialsRequest);
+
+
             Credentials credentials = getCredentialsResult.getCredentials();
             AWSSessionCredentials sessionCredentials = new BasicSessionCredentials(
                     credentials.getAccessKeyId(),
                     credentials.getSecretKey(),
                     credentials.getSessionToken()
             );
+
+            AmazonS3Client s3Client = new AmazonS3Client(sessionCredentials);
 
         }
         catch (Exception e) {
