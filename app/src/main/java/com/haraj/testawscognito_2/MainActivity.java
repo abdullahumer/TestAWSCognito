@@ -1,13 +1,20 @@
 package com.haraj.testawscognito_2;
 
+import android.os.Environment;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
 
+import com.amazonaws.auth.AWSCredentials;
 import com.amazonaws.auth.AWSSessionCredentials;
+import com.amazonaws.auth.BasicAWSCredentials;
 import com.amazonaws.auth.BasicSessionCredentials;
 import com.amazonaws.auth.CognitoCachingCredentialsProvider;
 import com.amazonaws.mobile.client.AWSMobileClient;
+import com.amazonaws.mobileconnectors.s3.transferutility.TransferListener;
+import com.amazonaws.mobileconnectors.s3.transferutility.TransferObserver;
+import com.amazonaws.mobileconnectors.s3.transferutility.TransferState;
+import com.amazonaws.mobileconnectors.s3.transferutility.TransferUtility;
 import com.amazonaws.regions.Region;
 import com.amazonaws.regions.Regions;
 import com.amazonaws.services.cognitoidentity.AmazonCognitoIdentityClient;
@@ -20,6 +27,7 @@ import com.amazonaws.services.cognitoidentity.model.GetOpenIdTokenRequest;
 import com.amazonaws.services.cognitoidentity.model.GetOpenIdTokenResult;
 import com.amazonaws.services.s3.AmazonS3Client;
 
+import java.io.File;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -30,9 +38,53 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        AWSMobileClient.getInstance().initialize(this).execute();
+//        AWSMobileClient.getInstance().initialize(this).execute();
 
         getS3Client();
+
+        getS3Client1();
+    }
+
+    private void getS3Client1() {
+
+        new Thread(new Runnable(){
+            @Override
+            public void run() {
+        String token = "eyJraWQiOiJldS13ZXN0LTExIiwidHlwIjoiSldTIiwiYWxnIjoiUlM1MTIifQ.eyJzdWIiOiJldS13ZXN0LTE6MjkyM2IxYWQtNGNiYS00ZTFmLWEyY2YtZGIyNDVmM2Q3NWJiIiwiYXVkIjoiZXUtd2VzdC0xOjI4OWZkNGEwLTIyMzYtNGZmNC05YzJiLTYxYzkzZTYwYmYwYSIsImFtciI6WyJhdXRoZW50aWNhdGVkIiwiZ3JhcGhxbC5oYXJhaiIsImdyYXBocWwuaGFyYWo6ZXUtd2VzdC0xOjI4OWZkNGEwLTIyMzYtNGZmNC05YzJiLTYxYzkzZTYwYmYwYTo1NjI4NDAiXSwiaXNzIjoiaHR0cHM6Ly9jb2duaXRvLWlkZW50aXR5LmFtYXpvbmF3cy5jb20iLCJleHAiOjE1NDUxNDgzMTYsImlhdCI6MTU0NTA2MTkxNn0.V-iZeAQdsdMb9LkzYNucka5PEYRMBKKTGm5CzZIJYg8Z5ehcq562JbXGJWr7Yea-w2APsbpVxgP8EjHxSLjsMggk2FdVd-m8YhNFwBYL91oph-wFiAIxLVginD3t3_EhmkPduXZgM1mwH1_yNsGqpBY4nr15cgjqLvfyb4t-QJADFFyjd2qpIUoNzU2EQ5ypEKmbVdgOeLCIe6a-L09yzO-M1xdC0Onc8fs5ELOISR8FA5YFJYIgyqfSz9wDmz929rmCV9EjFdNC3Jd_hSC_Ofp6NYjiW1HRTU0a2C3Z3FCNJFzKppQSUt78MWrJblhHJSEboeMoKhzxmkA0VPgNjg";
+
+        final String identityId = "eu-west-1:2923b1ad-4cba-4e1f-a2cf-db245f3d75bb";
+
+
+        Map<String,String> logins = new HashMap<>();
+        logins.put("cognito-identity.amazonaws.com", token);
+
+        GetCredentialsForIdentityRequest getCredentialsRequest =
+                new GetCredentialsForIdentityRequest()
+                        .withIdentityId(identityId)
+                        .withLogins(logins);
+
+        CognitoCachingCredentialsProvider credentialsProvider = new CognitoCachingCredentialsProvider(
+                getApplicationContext(),"eu-west-1:289fd4a0-2236-4ff4-9c2b-61c93e60bf0a", Regions.EU_WEST_1);
+        credentialsProvider.setLogins(logins);
+
+        AmazonCognitoIdentityClient cognitoIdentityClient = new AmazonCognitoIdentityClient(credentialsProvider);
+//        AmazonCognitoIdentityClient cognitoIdentityClient = new AmazonCognitoIdentityClient(awsCredentials);
+        try {
+            GetCredentialsForIdentityResult getCredentialsResult = cognitoIdentityClient.getCredentialsForIdentity(getCredentialsRequest);
+            Credentials credentials = getCredentialsResult.getCredentials();
+            AWSSessionCredentials sessionCredentials = new BasicSessionCredentials(
+                    credentials.getAccessKeyId(),
+                    credentials.getSecretKey(),
+                    credentials.getSessionToken()
+            );
+
+        }
+        catch (Exception e) {
+            e.printStackTrace();
+        }
+
+            }
+        }).start();
     }
 
     private void getS3Client() {
@@ -60,7 +112,7 @@ public class MainActivity extends AppCompatActivity {
                     uploadImageWithClient(testClient);
                 }
 
-                String token = "eyJraWQiOiJldS13ZXN0LTExIiwidHlwIjoiSldTIiwiYWxnIjoiUlM1MTIifQ.eyJzdWIiOiJldS13ZXN0LTE6NzUzYTkyNDMtZTc2ZS00NjAxLTlhNWMtODIzNzdkOTEwYTg1IiwiYXVkIjoiZXUtd2VzdC0xOjI4OWZkNGEwLTIyMzYtNGZmNC05YzJiLTYxYzkzZTYwYmYwYSIsImFtciI6WyJhdXRoZW50aWNhdGVkIiwiZ3JhcGhxbC5oYXJhaiIsImdyYXBocWwuaGFyYWo6ZXUtd2VzdC0xOjI4OWZkNGEwLTIyMzYtNGZmNC05YzJiLTYxYzkzZTYwYmYwYToxIl0sImlzcyI6Imh0dHBzOi8vY29nbml0by1pZGVudGl0eS5hbWF6b25hd3MuY29tIiwiZXhwIjoxNTQ1MTQ2NDUyLCJpYXQiOjE1NDUwNjAwNTJ9.OSbYkpCSsqx2e4aJfgMnrlrAxvXgz1zqXYp-hAwte7vYvPA29wjW8gbLTyTW3m5OZiuKNVEpBNQU4WL4pW80FZgGBEy2-DGxfSlBm6RxgeihUoZtGEixD51vtzH-HDoff8LyJjZIkT-H3P4Jfi31l_yG6zBU67HNRhR9ebUhout6VuKTQvCMSL6R2tYrkCxK1ikqdc8CBGnIntxR7avV6GPKBhf4Dk4cdk5BtaVr2oM0bEVLGl1VjEzkikjqcXuOerF5Ujk-a3KJW2HVVUUVWuZ6NNn43F31tGYGFOUWaXknv1NneVqRqIxe0Dni2id_S--JTBe7865Mr8_UVbGPAg";
+                String token = "eyJraWQiOiJldS13ZXN0LTExIiwidHlwIjoiSldTIiwiYWxnIjoiUlM1MTIifQ.eyJzdWIiOiJldS13ZXN0LTE6MjkyM2IxYWQtNGNiYS00ZTFmLWEyY2YtZGIyNDVmM2Q3NWJiIiwiYXVkIjoiZXUtd2VzdC0xOjI4OWZkNGEwLTIyMzYtNGZmNC05YzJiLTYxYzkzZTYwYmYwYSIsImFtciI6WyJhdXRoZW50aWNhdGVkIiwiZ3JhcGhxbC5oYXJhaiIsImdyYXBocWwuaGFyYWo6ZXUtd2VzdC0xOjI4OWZkNGEwLTIyMzYtNGZmNC05YzJiLTYxYzkzZTYwYmYwYTo1NjI4NDAiXSwiaXNzIjoiaHR0cHM6Ly9jb2duaXRvLWlkZW50aXR5LmFtYXpvbmF3cy5jb20iLCJleHAiOjE1NDUxNDgzMTYsImlhdCI6MTU0NTA2MTkxNn0.V-iZeAQdsdMb9LkzYNucka5PEYRMBKKTGm5CzZIJYg8Z5ehcq562JbXGJWr7Yea-w2APsbpVxgP8EjHxSLjsMggk2FdVd-m8YhNFwBYL91oph-wFiAIxLVginD3t3_EhmkPduXZgM1mwH1_yNsGqpBY4nr15cgjqLvfyb4t-QJADFFyjd2qpIUoNzU2EQ5ypEKmbVdgOeLCIe6a-L09yzO-M1xdC0Onc8fs5ELOISR8FA5YFJYIgyqfSz9wDmz929rmCV9EjFdNC3Jd_hSC_Ofp6NYjiW1HRTU0a2C3Z3FCNJFzKppQSUt78MWrJblhHJSEboeMoKhzxmkA0VPgNjg";
 
                 final String identityId = "eu-west-1:2923b1ad-4cba-4e1f-a2cf-db245f3d75bb";
 
@@ -137,6 +189,49 @@ public class MainActivity extends AppCompatActivity {
 
     private void uploadImageWithClient(AmazonS3Client testClient) {
 
+        /*
+        TransferUtility transferUtility =
+                TransferUtility.builder()
+                        .context(getApplicationContext())
+                        .awsConfiguration(AWSMobileClient.getInstance().getConfiguration())
+                        .s3Client(testClient)
+                        .build();
+
+        final File file = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES),
+                "/" + fileName);
+
+        TransferObserver uploadObserver =
+                transferUtility.upload("Test_AU" + fileName, file);
+
+        uploadObserver.setTransferListener(new TransferListener() {
+
+            @Override
+            public void onStateChanged(int id, TransferState state) {
+                if (TransferState.COMPLETED == state) {
+                    // Handle a completed download.
+                }
+            }
+
+            @Override
+            public void onProgressChanged(int id, long bytesCurrent, long bytesTotal) {
+                float percentDonef = ((float)bytesCurrent/(float)bytesTotal) * 100;
+                int percentDone = (int)percentDonef;
+            }
+
+            @Override
+            public void onError(int id, Exception ex) {
+                // Handle errors
+            }
+
+        });
+
+// If your upload does not trigger the onStateChanged method inside your
+// TransferListener, you can directly check the transfer state as shown here.
+        if (TransferState.COMPLETED == uploadObserver.getState()) {
+            // Handle a completed upload.
+        }
+
+        */
     }
 
 
